@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Zelo · Monitor de Segurança</title>
+<style>
+  :root {
+    --ink: #090D11;
+    --panel: #10161C;
+    --panel-2: #151D25;
+    --line: #212B34;
+    --line-soft: #1A222A;
+    --text: #E8EEF2;
+    --text-muted: #7C8894;
+    --text-dim: #4B5560;
+    --phosphor: #5EEAD4;
+    --phosphor-dim: rgba(94, 234, 212, 0.16);
+    --amber: #F5A623;
+    --amber-dim: rgba(245, 166, 35, 0.16);
+    --danger: #FF4757;
+    --danger-dim: rgba(255, 71, 87, 0.16);
+    --ok: #4ADE80;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
+    --radius: 14px;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--ink);
+    color: var(--text);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+    background-image:
+      radial-gradient(circle at 15% 0%, rgba(94,234,212,0.05), transparent 40%),
+      radial-gradient(circle at 85% 100%, rgba(245,166,35,0.04), transparent 40%);
+  }
+
+  .app {
+    max-width: 460px;
+    margin: 0 auto;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+
+  /* ---------- Header ---------- */
+  header {
+    padding: 20px 20px 14px;
+    border-bottom: 1px solid var(--line-soft);
+    position: sticky;
+    top: 0;
+    background: rgba(9,13,17,0.85);
+    backdrop-filter: blur(10px);
+    z-index: 20;
+  }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.16em;
+    color: var(--phosphor);
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+  .eyebrow .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--ok);
+    box-shadow: 0 0 8px var(--ok);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
+  h1 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+  }
+  .sub { color: var(--text-muted); font-size: 12.5px; margin-top: 3px; }
+
+  /* ---------- Tabs ---------- */
+  nav.tabs {
+    display: flex;
+    gap: 4px;
+    padding: 12px 14px 0;
+    position: sticky;
+    top: 78px;
+    background: rgba(9,13,17,0.85);
+    backdrop-filter: blur(10px);
+    z-index: 19;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  nav.tabs button {
+    flex: 1;
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    padding: 10px 4px 12px;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: color .15s ease, border-color .15s ease;
+    text-transform: uppercase;
+  }
+  nav.tabs button:hover { color: var(--text-muted); }
+  nav.tabs button.active { color: var(--phosphor); border-bottom-color: var(--phosphor); }
+
+  main { flex: 1; padding: 18px 16px 100px; }
+  .view { display: none; animation: fadeIn .25s ease; }
+  .view.active { display: block; }
+  @keyframes fadeIn { from { opacity:0; transform: translateY(4px);} to {opacity:1; transform:none;} }
+
+  /* ---------- Cards / panels ---------- */
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line-soft);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+  .panel-title {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin: 0 0 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  /* ---------- Monitor / Viewfinder ---------- */
+  .viewfinder {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    background: #000;
+    border-radius: var(--radius);
+    overflow: hidden;
+    border: 1px solid var(--line-soft);
+    margin-bottom: 14px;
+  }
+  .viewfinder video {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    transform: scaleX(-1);
+    display: block;
+  }
+  .viewfinder .no-cam {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 10px;
+    color: var(--text-dim);
+    background:
+      repeating-linear-gradient(45deg, #0d1319 0 2px, #0a0f14 2px 26px);
+    text-align: center;
+    padding: 30px;
+  }
+  .no-cam .icon { font-size: 30px; opacity: .6; }
+  .no-cam p { font-size: 12.5px; margin: 0; line-height: 1.5; }
+  .no-cam button { margin-top: 4px; }
+
+  /* corner brackets (reticle) */
+  .bracket { position: absolute; width: 22px; height: 22px; border: 2px solid var(--phosphor); opacity: .85; }
+  .bracket.tl { top: 14px; left: 14px; border-right: none; border-bottom: none; border-top-left-radius: 6px; }
+  .bracket.tr { top: 14px; right: 14px; border-left: none; border-bottom: none; border-top-right-radius: 6px; }
+  .bracket.bl { bottom: 14px; left: 14px; border-right: none; border-top: none; border-bottom-left-radius: 6px; }
+  .bracket.br { bottom: 14px; right: 14px; border-left: none; border-top: none; border-bottom-right-radius: 6px; }
+
+  .scanline {
+    position: absolute; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--phosphor), transparent);
+    opacity: .55;
+    animation: scan 3.2s linear infinite;
+    pointer-events: none;
+  }
+  @keyframes scan { 0% { top: 8%; } 50% { top: 92%; } 100% { top: 8%; } }
+
+  /* HUD telemetry overlay */
+  .hud {
+    position: absolute; top: 14px; left: 14px;
+    background: rgba(9,13,17,0.62);
+    backdrop-filter: blur(6px);
+    border: 1px solid rgba(94,234,212,0.25);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    line-height: 1.85;
+    min-width: 150px;
+  }
+  .hud .row { display: flex; justify-content: space-between; gap: 14px; white-space: nowrap; }
+  .hud .k { color: var(--text-dim); }
+  .hud .v { color: var(--phosphor); font-weight: 600; }
+  .hud .v.amber { color: var(--amber); }
+  .hud .v.danger { color: var(--danger); }
+
+  .alert-banner {
+    position: absolute; left: 10px; right: 10px; bottom: 12px;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    font-weight: 700;
+    text-align: center;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .alert-banner.warn { display: flex; background: var(--amber-dim); color: var(--amber); border: 1px solid var(--amber); }
+  .alert-banner.danger { display: flex; background: var(--danger-dim); color: #fff; border: 1px solid var(--danger); background: rgba(255,71,87,0.85); animation: flash 1s ease-in-out infinite; }
+  @keyframes flash { 0%,100%{opacity:1} 50%{opacity:0.65} }
+
+  .fall-progress {
+    position: absolute; top: 0; left: 0; height: 3px;
+    background: var(--danger);
+    width: 0%;
+    transition: width .1s linear;
+  }
+
+  /* ---------- Controls row ---------- */
+  .control-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+  .chip-btn {
+    background: var(--panel-2);
+    border: 1px solid var(--line-soft);
+    color: var(--text-muted);
+    font-family: var(--mono);
+    font-size: 10.5px;
+    padding: 9px 6px;
+    border-radius: 8px;
+    cursor: pointer;
+    text-align: center;
+    transition: all .12s ease;
+  }
+  .chip-btn:hover { border-color: var(--phosphor); color: var(--text); }
+  .chip-btn.selected { border-color: var(--phosphor); color: var(--phosphor); background: var(--phosphor-dim); }
+
+  .btn {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    border-radius: 10px;
+    padding: 12px 16px;
+    border: 1px solid var(--line-soft);
+    background: var(--panel-2);
+    color: var(--text);
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all .12s ease;
+  }
+  .btn:hover { border-color: var(--phosphor); }
+  .btn.primary { background: var(--phosphor); color: #0A1210; border-color: var(--phosphor); }
+  .btn.primary:hover { filter: brightness(1.08); }
+  .btn.danger { background: var(--danger); color: white; border-color: var(--danger); }
+  .btn.block { width: 100%; }
+  .btn.ghost { background: transparent; }
+  .btn.small { padding: 8px 12px; font-size: 10.5px; }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+
+  .row-split { display: flex; gap: 8px; }
+  .row-split .btn { flex: 1; }
+
+  /* ---------- Forms ---------- */
+  label.field-label {
+    display: block;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin: 12px 0 6px;
+  }
+  input[type=text], input[type=tel] {
+    width: 100%;
+    background: var(--panel-2);
+    border: 1px solid var(--line-soft);
+    color: var(--text);
+    border-radius: 9px;
+    padding: 10px 12px;
+    font-size: 13.5px;
+    font-family: var(--sans);
+  }
+  input:focus { outline: none; border-color: var(--phosphor); }
+  input::placeholder { color: var(--text-dim); }
+
+  .phone-row { display: flex; gap: 6px; }
+  .phone-row input:nth-child(1) { width: 56px; flex: none; }
+  .phone-row input:nth-child(2) { width: 56px; flex: none; }
+  .phone-row input:nth-child(3) { flex: 1; }
+
+  .chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .chip {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--line-soft);
+    color: var(--text-muted);
+    cursor: pointer;
+    background: var(--panel-2);
+  }
+  .chip.selected { border-color: var(--phosphor); color: var(--phosphor); background: var(--phosphor-dim); }
+
+  .switch-row {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-top: 14px;
+  }
+  .switch-label { font-size: 13px; color: var(--text-muted); }
+  .switch { position: relative; width: 40px; height: 22px; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider {
+    position: absolute; cursor: pointer; inset: 0;
+    background: var(--line-soft); border-radius: 999px; transition: .15s;
+  }
+  .slider:before {
+    content: ""; position: absolute; height: 16px; width: 16px; left: 3px; top: 3px;
+    background: var(--text-dim); border-radius: 50%; transition: .15s;
+  }
+  input:checked + .slider { background: var(--phosphor-dim); border: 1px solid var(--phosphor); }
+  input:checked + .slider:before { transform: translateX(18px); background: var(--phosphor); }
+
+  /* ---------- Contact list ---------- */
+  .contact-item {
+    display: flex; justify-content: space-between; align-items: center;
+    background: var(--panel); border: 1px solid var(--line-soft);
+    border-radius: 12px; padding: 13px 14px; margin-bottom: 8px;
+  }
+  .contact-name-row { display: flex; align-items: center; gap: 7px; }
+  .contact-name { font-weight: 700; font-size: 14px; }
+  .badge-primary {
+    font-family: var(--mono); font-size: 9px; font-weight: 700; letter-spacing: .04em;
+    color: var(--ok); border: 1px solid var(--ok); border-radius: 5px; padding: 1px 5px;
+  }
+  .contact-meta { color: var(--text-muted); font-size: 12px; margin-top: 3px; font-family: var(--mono); }
+  .contact-relation { color: var(--text-dim); font-size: 11.5px; margin-top: 2px; }
+  .contact-actions { display: flex; flex-direction: column; gap: 4px; align-items: flex-end; }
+  .link-btn { background: none; border: none; color: var(--phosphor); font-size: 12px; cursor: pointer; font-family: var(--mono); }
+  .link-btn.del { color: var(--danger); }
+  .empty-state { color: var(--text-dim); font-size: 12.5px; text-align: center; padding: 20px 0; }
+
+  /* ---------- Status pill ---------- */
+  .status-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: var(--mono); font-size: 10.5px; padding: 5px 10px;
+    border-radius: 999px; border: 1px solid var(--line-soft); color: var(--text-muted);
+  }
+  .status-pill .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-dim); }
+  .status-pill.connected { color: var(--ok); border-color: var(--ok); }
+  .status-pill.connected .dot { background: var(--ok); box-shadow: 0 0 6px var(--ok); }
+
+  /* ---------- Log ---------- */
+  .log-item {
+    border-left: 2px solid var(--line-soft);
+    padding: 2px 0 14px 14px;
+    position: relative;
+  }
+  .log-item:before {
+    content: ""; position: absolute; left: -5px; top: 3px;
+    width: 8px; height: 8px; border-radius: 50%; background: var(--text-dim);
+    border: 2px solid var(--ink);
+  }
+  .log-item.emergency:before { background: var(--danger); }
+  .log-item.success:before { background: var(--ok); }
+  .log-time { font-family: var(--mono); font-size: 10px; color: var(--text-dim); }
+  .log-title { font-size: 13px; font-weight: 600; margin: 2px 0; }
+  .log-detail { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+  .log-detail a { color: var(--phosphor); }
+
+  .note {
+    font-size: 11.5px; color: var(--text-dim); line-height: 1.6;
+    background: var(--panel-2); border: 1px dashed var(--line-soft);
+    border-radius: 10px; padding: 10px 12px; margin-top: 10px;
+  }
+
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-thumb { background: var(--line-soft); border-radius: 4px; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <div class="eyebrow"><span class="dot"></span> MOCKUP · PROTÓTIPO WEB</div>
+    <h1>Zelo</h1>
+    <div class="sub">Monitor de segurança · postura, quedas &amp; alertas de emergência</div>
+  </header>
+
+  <nav class="tabs">
+    <button data-tab="monitor" class="active">Monitor</button>
+    <button data-tab="contatos">Contatos</button>
+    <button data-tab="config">Config</button>
+    <button data-tab="logs">Eventos</button>
+  </nav>
+
+  <main>
+
+    <!-- ============================= MONITOR ============================= -->
+    <section class="view active" id="view-monitor">
+      <div class="viewfinder" id="viewfinder">
+        <video id="video" autoplay playsinline muted></video>
+        <div class="no-cam" id="noCam">
+          <div class="icon">◎</div>
+          <p>Sem acesso à câmera.<br>Permita o uso da câmera para ver o preview ao vivo — a simulação de telemetria funciona normalmente sem ela.</p>
+          <button class="btn small" id="retryCam">Tentar novamente</button>
+        </div>
+
+        <div class="bracket tl"></div>
+        <div class="bracket tr"></div>
+        <div class="bracket bl"></div>
+        <div class="bracket br"></div>
+        <div class="scanline"></div>
+
+        <div class="fall-progress" id="fallProgress"></div>
+
+        <div class="hud">
+          <div class="row"><span class="k">FPS</span><span class="v" id="hudFps">30</span></div>
+          <div class="row"><span class="k">POSTURA</span><span class="v" id="hudPosture">Em pé</span></div>
+          <div class="row"><span class="k">MOVIMENTO</span><span class="v" id="hudMovement">Estático</span></div>
+          <div class="row"><span class="k">EMOÇÃO</span><span class="v" id="hudEmotion">Neutro</span></div>
+        </div>
+
+        <div class="alert-banner" id="alertBanner"></div>
+      </div>
+
+      <div class="panel">
+        <p class="panel-title">Simular leitura <span id="autoStatus" style="color:var(--text-dim)">auto: ligado</span></p>
+        <div class="control-grid">
+          <div class="chip-btn" data-set="posture" data-val="EM_PE">Em pé</div>
+          <div class="chip-btn" data-set="posture" data-val="SENTADO">Sentado</div>
+          <div class="chip-btn" data-set="posture" data-val="DEITADO">Deitado</div>
+          <div class="chip-btn" data-set="emotion" data-val="NEUTRO">Neutro</div>
+          <div class="chip-btn" data-set="emotion" data-val="ALEGRIA">Alegria</div>
+          <div class="chip-btn" data-set="emotion" data-val="SURPRESA">Surpresa</div>
+        </div>
+        <div class="row-split" style="margin-top:8px;">
+          <button class="btn ghost" id="toggleAuto">Pausar simulação auto</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <p class="panel-title">Gatilho de emergência</p>
+        <p style="font-size:12.5px;color:var(--text-muted);margin:0 0 12px;line-height:1.55;">
+          Simula uma queda brusca. Se a condição persistir por <b style="color:var(--text)">3 segundos</b>,
+          a rotina de emergência é acionada automaticamente: consulta os contatos primários e dispara o WhatsApp.
+        </p>
+        <button class="btn danger block" id="simulateFall">Simular queda</button>
+      </div>
+    </section>
+
+    <!-- ============================= CONTATOS ============================= -->
+    <section class="view" id="view-contatos">
+      <div class="panel">
+        <p class="panel-title" id="formTitle">Novo contato</p>
+        <label class="field-label">Nome completo</label>
+        <input type="text" id="cName" placeholder="Ex: Maria Oliveira" />
+
+        <label class="field-label">Telefone</label>
+        <div class="phone-row">
+          <input type="text" id="cDdi" placeholder="DDI" value="55" inputmode="numeric" maxlength="3" />
+          <input type="text" id="cDdd" placeholder="DDD" inputmode="numeric" maxlength="2" />
+          <input type="tel" id="cPhone" placeholder="Número" inputmode="numeric" maxlength="9" />
+        </div>
+
+        <label class="field-label">Relação</label>
+        <div class="chip-row" id="relationChips"></div>
+
+        <div class="switch-row">
+          <span class="switch-label">Contato de emergência primário</span>
+          <label class="switch">
+            <input type="checkbox" id="cPrimary" />
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div class="row-split" style="margin-top:16px;">
+          <button class="btn ghost" id="cancelEdit" style="display:none;">Cancelar</button>
+          <button class="btn primary block" id="saveContact">Adicionar contato</button>
+        </div>
+      </div>
+
+      <div id="contactList"></div>
+    </section>
+
+    <!-- ============================= CONFIG ============================= -->
+    <section class="view" id="view-config">
+      <div class="panel">
+        <p class="panel-title">Gateway WhatsApp</p>
+        <div class="chip-row" id="gatewayChips"></div>
+        <label class="field-label">Base URL</label>
+        <input type="text" id="gwUrl" placeholder="https://sua-evolution-api.com" />
+        <label class="field-label">API Key / Token</label>
+        <input type="text" id="gwKey" placeholder="••••••••••" />
+        <button class="btn primary block" style="margin-top:14px;" id="saveGateway">Salvar gateway</button>
+        <div class="note">Este mockup não envia requisições reais ao gateway — apenas registra a configuração e usa o fallback de link direto (<code>wa.me</code>) nos disparos simulados.</div>
+      </div>
+
+      <div class="panel">
+        <p class="panel-title">Bridge Alexa <span class="status-pill" id="alexaStatus"><span class="dot"></span>desconectado</span></p>
+        <label class="field-label">URL do WebSocket</label>
+        <input type="text" id="alexaUrl" placeholder="wss://seu-bridge-alexa.com/socket" />
+        <label class="field-label">Token do dispositivo</label>
+        <input type="text" id="alexaToken" placeholder="••••••••••" />
+        <button class="btn primary block" style="margin-top:14px;" id="connectAlexa">Conectar bridge</button>
+      </div>
+
+      <div class="panel">
+        <p class="panel-title">Simular comando de voz</p>
+        <p style="font-size:12.5px;color:var(--text-muted);margin:0 0 10px;line-height:1.55;">
+          Digite uma frase como se fosse transcrita pela Alexa. O parser localiza o nome do contato e dispara o WhatsApp — o mesmo fluxo usado pelo gatilho de queda.
+        </p>
+        <input type="text" id="voiceCommand" placeholder='Ex: "avisar a Maria que cheguei"' />
+        <button class="btn primary block" style="margin-top:10px;" id="sendVoiceCommand">Processar comando</button>
+      </div>
+    </section>
+
+    <!-- ============================= LOGS ============================= -->
+    <section class="view" id="view-logs">
+      <div class="panel">
+        <p class="panel-title">Linha do tempo de eventos</p>
+        <div id="logList"></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  // ------------------------------------------------------------------
+  // Estado global (em memória — equivalente ao zustand store do app RN)
+  // ------------------------------------------------------------------
+  const RELATIONS = [
+    ['FAMILIAR', 'Familiar'], ['CONJUGE', 'Cônjuge'], ['FILHO_FILHA', 'Filho(a)'],
+    ['CUIDADOR', 'Cuidador(a)'], ['AMIGO', 'Amigo(a)'], ['MEDICO', 'Médico(a)'], ['OUTRO', 'Outro'],
+  ];
+  const GATEWAYS = ['EVOLUTION_API', 'Z_API', 'CLOUD_API', 'NENHUM'];
+
+  let contacts = [
+    { id: cryptoId(), name: 'Maria Oliveira', ddi: '55', ddd: '11', phone: '987654321', relation: 'FILHO_FILHA', primary: true },
+    { id: cryptoId(), name: 'Dr. Carlos Mendes', ddi: '55', ddd: '11', phone: '991234567', relation: 'MEDICO', primary: false },
+  ];
+  let editingId = null;
+  let selectedRelation = 'FAMILIAR';
+  let selectedGateway = 'NENHUM';
+  let alexaConnected = false;
+
+  let hud = { fps: 30, posture: 'EM_PE', movement: 'ESTATICO', emotion: 'NEUTRO' };
+  let autoSim = true;
+  let fallActive = false;
+  let fallStartedAt = null;
+  let emergencyAlreadyTriggered = false;
+  let logs = [];
+
+  const POSTURE_LABEL = { EM_PE: 'Em pé', SENTADO: 'Sentado', DEITADO: 'Deitado' };
+  const EMOTION_LABEL = { NEUTRO: 'Neutro', ALEGRIA: 'Alegria 🙂', SURPRESA: 'Surpresa 😮', TRISTEZA: 'Tristeza 🙁' };
+  const MOVEMENT_LABEL = { ESTATICO: 'Estático', INQUIETO: 'Inquieto' };
+
+  function cryptoId() {
+    return 'c_' + Math.random().toString(36).slice(2, 10);
+  }
+  function fmtTime(ts) {
+    const d = new Date(ts);
+    return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }
+  function normalize(s) {
+    return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  }
+  function fullPhone(c) {
+    return `${c.ddi}${c.ddd}${c.phone}`.replace(/\D/g, '');
+  }
+
+  // ------------------------------------------------------------------
+  // Navegação por abas
+  // ------------------------------------------------------------------
+  document.querySelectorAll('nav.tabs button').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('nav.tabs button').forEach((b) => b.classList.remove('active'));
+      document.querySelectorAll('.view').forEach((v) => v.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('view-' + btn.dataset.tab).classList.add('active');
+    });
+  });
+
+  // ------------------------------------------------------------------
+  // Câmera (getUserMedia) — best effort; mockup funciona sem ela
+  // ------------------------------------------------------------------
+  const video = document.getElementById('video');
+  const noCam = document.getElementById('noCam');
+
+  async function initCamera() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+      video.srcObject = stream;
+      noCam.style.display = 'none';
+    } catch (err) {
+      noCam.style.display = 'flex';
+    }
+  }
+  document.getElementById('retryCam').addEventListener('click', initCamera);
+  initCamera();
+
+  // ------------------------------------------------------------------
+  // HUD: simulação de telemetria (equivalente ao useBehaviorVision)
+  // ------------------------------------------------------------------
+  function renderHud() {
+    document.getElementById('hudFps').textContent = hud.fps;
+    document.getElementById('hudPosture').textContent = POSTURE_LABEL[hud.posture];
+    document.getElementById('hudMovement').textContent = MOVEMENT_LABEL[hud.movement];
+    document.getElementById('hudEmotion').textContent = EMOTION_LABEL[hud.emotion];
+
+    const movEl = document.getElementById('hudMovement');
+    movEl.className = 'v' + (hud.movement === 'INQUIETO' ? ' amber' : '');
+
+    document.querySelectorAll('.chip-btn[data-set]').forEach((el) => {
+      const isSelected =
+        (el.dataset.set === 'posture' && el.dataset.val === hud.posture) ||
+        (el.dataset.set === 'emotion' && el.dataset.val === hud.emotion);
+      el.classList.toggle('selected', isSelected);
+    });
+  }
+
+  document.querySelectorAll('.chip-btn[data-set]').forEach((el) => {
+    el.addEventListener('click', () => {
+      if (el.dataset.set === 'posture') hud.posture = el.dataset.val;
+      if (el.dataset.set === 'emotion') hud.emotion = el.dataset.val;
+      renderHud();
+    });
+  });
+
+  document.getElementById('toggleAuto').addEventListener('click', (e) => {
+    autoSim = !autoSim;
+    e.target.textContent = autoSim ? 'Pausar simulação auto' : 'Retomar simulação auto';
+    document.getElementById('autoStatus').textContent = 'auto: ' + (autoSim ? 'ligado' : 'pausado');
+  });
+
+  // Random-walk leve para simular pequenas variações naturais de leitura.
+  setInterval(() => {
+    hud.fps = 28 + Math.floor(Math.random() * 4);
+    if (autoSim && !fallActive) {
+      hud.movement = Math.random() < 0.15 ? 'INQUIETO' : 'ESTATICO';
+    }
+    renderHud();
+  }, 900);
+
+  // ------------------------------------------------------------------
+  // Gatilho de queda: máquina de estados (mesma lógica do RN)
+  // ------------------------------------------------------------------
+  const FALL_PERSISTENCE_MS = 3000;
+  const alertBanner = document.getElementById('alertBanner');
+  const fallProgressEl = document.getElementById('fallProgress');
+  const simulateFallBtn = document.getElementById('simulateFall');
+
+  simulateFallBtn.addEventListener('click', () => {
+    if (fallActive) return;
+    fallActive = true;
+    fallStartedAt = Date.now();
+    emergencyAlreadyTriggered = false;
+    hud.posture = 'DEITADO';
+    hud.movement = 'ESTATICO';
+    renderHud();
+    simulateFallBtn.disabled = true;
+    simulateFallBtn.textContent = 'Queda em análise...';
+
+    alertBanner.className = 'alert-banner warn';
+    alertBanner.textContent = '⚠️ Possível queda detectada...';
+
+    logEvent('warn', 'Queda detectada', 'Aguardando persistência de 3s para confirmar emergência.');
+
+    const tick = setInterval(() => {
+      const elapsed = Date.now() - fallStartedAt;
+      const pct = Math.min(100, (elapsed / FALL_PERSISTENCE_MS) * 100);
+      fallProgressEl.style.width = pct + '%';
+
+      if (elapsed >= FALL_PERSISTENCE_MS && !emergencyAlreadyTriggered) {
+        emergencyAlreadyTriggered = true;
+        clearInterval(tick);
+        triggerFallEmergency();
+      }
+    }, 80);
+  });
+
+  function resetFallState() {
+    fallActive = false;
+    fallStartedAt = null;
+    fallProgressEl.style.width = '0%';
+    alertBanner.className = 'alert-banner';
+    alertBanner.textContent = '';
+    simulateFallBtn.disabled = false;
+    simulateFallBtn.textContent = 'Simular queda';
+  }
+
+  function triggerFallEmergency() {
+    alertBanner.className = 'alert-banner danger';
+    alertBanner.textContent = '⚠️ EMERGÊNCIA: queda sustentada (3s)';
+
+    const result = runEmergencyRoutine({ contactQuery: '', reason: 'FALL_DETECTED' });
+    logEvent(
+      result.success ? 'emergency' : 'warn',
+      result.success ? 'Rotina de emergência disparada' : 'Falha na rotina de emergência',
+      result.detail,
+    );
+
+    setTimeout(resetFallState, 2600);
+  }
+
+  // ------------------------------------------------------------------
+  // whatsappService (mockup): gera link wa.me real e clicável
+  // ------------------------------------------------------------------
+  function buildWhatsAppLink(phone, message) {
+    return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+  }
+
+  // ------------------------------------------------------------------
+  // alexaIntegrationService (mockup): rotina compartilhada
+  // ------------------------------------------------------------------
+  const DEFAULT_FALL_MESSAGE = '🚨 Alerta automático: uma possível queda foi detectada e a pessoa não se moveu por alguns segundos. Por favor, verifique o quanto antes.';
+
+  function findContactByName(query) {
+    const q = normalize(query);
+    if (!q) return undefined;
+    return (
+      contacts.find((c) => normalize(c.name) === q) ||
+      contacts.find((c) => normalize(c.name).includes(q))
+    );
+  }
+
+  function runEmergencyRoutine(params) {
+    const targets =
+      params.reason === 'FALL_DETECTED' && !params.contactQuery
+        ? contacts.filter((c) => c.primary)
+        : [findContactByName(params.contactQuery)].filter(Boolean);
+
+    if (targets.length === 0) {
+      return { success: false, detail: `Nenhum contato encontrado para "${params.contactQuery || 'contato de emergência'}".` };
+    }
+
+    const message = params.messageOverride || (params.reason === 'FALL_DETECTED' ? DEFAULT_FALL_MESSAGE : 'Cheguei bem, obrigado por perguntar!');
+
+    const links = targets.map((c) => `<a href="${buildWhatsAppLink(fullPhone(c), message)}" target="_blank" rel="noopener">${c.name}</a>`);
+
+    return {
+      success: true,
+      detail: `Mensagem "${message}" pronta para: ${links.join(', ')}`,
+    };
+  }
+
+  function extractContactFromUtterance(utterance) {
+    const match = utterance.match(/(?:para|avisar[ao]?)\s+([a-zA-ZÀ-ÿ\s]+?)(?:\s+que\s.+)?$/i);
+    return match && match[1] ? match[1].trim() : '';
+  }
+
+  document.getElementById('sendVoiceCommand').addEventListener('click', () => {
+    const input = document.getElementById('voiceCommand');
+    const utterance = input.value.trim();
+    if (!utterance) return;
+
+    const contactQuery = extractContactFromUtterance(utterance);
+    const msgMatch = utterance.match(/que\s+(.+)$/i);
+    const messageOverride = msgMatch ? msgMatch[1] : undefined;
+
+    if (!contactQuery) {
+      logEvent('warn', 'Comando de voz não reconhecido', `Não foi possível extrair um nome de contato de: "${utterance}"`);
+      return;
+    }
+
+    const result = runEmergencyRoutine({ contactQuery, messageOverride, reason: 'VOICE_COMMAND' });
+    logEvent(
+      result.success ? 'success' : 'warn',
+      `Comando Alexa: "${utterance}"`,
+      result.detail,
+    );
+    input.value = '';
+  });
+
+  // ------------------------------------------------------------------
+  // Log de eventos
+  // ------------------------------------------------------------------
+  function logEvent(type, title, detailHtml) {
+    logs.unshift({ ts: Date.now(), type, title, detailHtml });
+    renderLogs();
+  }
+
+  function renderLogs() {
+    const el = document.getElementById('logList');
+    if (logs.length === 0) {
+      el.innerHTML = '<div class="empty-state">Nenhum evento registrado ainda.</div>';
+      return;
+    }
+    el.innerHTML = logs.map((l) => `
+      <div class="log-item ${l.type === 'emergency' ? 'emergency' : l.type === 'success' ? 'success' : ''}">
+        <div class="log-time">${fmtTime(l.ts)}</div>
+        <div class="log-title">${l.title}</div>
+        <div class="log-detail">${l.detailHtml}</div>
+      </div>
+    `).join('');
+  }
+
+  // ------------------------------------------------------------------
+  // Contatos (CRUD)
+  // ------------------------------------------------------------------
+  const relationChipsEl = document.getElementById('relationChips');
+  RELATIONS.forEach(([val, label]) => {
+    const chip = document.createElement('div');
+    chip.className = 'chip' + (val === selectedRelation ? ' selected' : '');
+    chip.textContent = label;
+    chip.dataset.val = val;
+    chip.addEventListener('click', () => {
+      selectedRelation = val;
+      document.querySelectorAll('#relationChips .chip').forEach((c) => c.classList.remove('selected'));
+      chip.classList.add('selected');
+    });
+    relationChipsEl.appendChild(chip);
+  });
+
+  function resetContactForm() {
+    editingId = null;
+    document.getElementById('cName').value = '';
+    document.getElementById('cDdi').value = '55';
+    document.getElementById('cDdd').value = '';
+    document.getElementById('cPhone').value = '';
+    document.getElementById('cPrimary').checked = false;
+    selectedRelation = 'FAMILIAR';
+    document.querySelectorAll('#relationChips .chip').forEach((c) => c.classList.toggle('selected', c.dataset.val === 'FAMILIAR'));
+    document.getElementById('formTitle').textContent = 'Novo contato';
+    document.getElementById('saveContact').textContent = 'Adicionar contato';
+    document.getElementById('cancelEdit').style.display = 'none';
+  }
+
+  document.getElementById('cancelEdit').addEventListener('click', resetContactForm);
+
+  document.getElementById('saveContact').addEventListener('click', () => {
+    const name = document.getElementById('cName').value.trim();
+    const ddi = document.getElementById('cDdi').value.trim() || '55';
+    const ddd = document.getElementById('cDdd').value.trim();
+    const phone = document.getElementById('cPhone').value.trim();
+    const primary = document.getElementById('cPrimary').checked;
+
+    if (!name || !ddd || !phone) {
+      alert('Preencha nome, DDD e telefone.');
+      return;
+    }
+
+    if (editingId) {
+      const c = contacts.find((x) => x.id === editingId);
+      Object.assign(c, { name, ddi, ddd, phone, relation: selectedRelation, primary });
+    } else {
+      contacts.push({ id: cryptoId(), name, ddi, ddd, phone, relation: selectedRelation, primary });
+    }
+    renderContacts();
+    resetContactForm();
+  });
+
+  function editContact(id) {
+    const c = contacts.find((x) => x.id === id);
+    if (!c) return;
+    editingId = id;
+    document.getElementById('cName').value = c.name;
+    document.getElementById('cDdi').value = c.ddi;
+    document.getElementById('cDdd').value = c.ddd;
+    document.getElementById('cPhone').value = c.phone;
+    document.getElementById('cPrimary').checked = c.primary;
+    selectedRelation = c.relation;
+    document.querySelectorAll('#relationChips .chip').forEach((chip) => chip.classList.toggle('selected', chip.dataset.val === c.relation));
+    document.getElementById('formTitle').textContent = 'Editar contato';
+    document.getElementById('saveContact').textContent = 'Salvar alterações';
+    document.getElementById('cancelEdit').style.display = 'block';
+    document.getElementById('cName').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  function deleteContact(id) {
+    const c = contacts.find((x) => x.id === id);
+    if (!c) return;
+    if (!confirm(`Remover "${c.name}" da agenda?`)) return;
+    contacts = contacts.filter((x) => x.id !== id);
+    if (editingId === id) resetContactForm();
+    renderContacts();
+  }
+
+  function renderContacts() {
+    const el = document.getElementById('contactList');
+    const sorted = [...contacts].sort((a, b) => (a.primary === b.primary ? a.name.localeCompare(b.name) : a.primary ? -1 : 1));
+
+    if (sorted.length === 0) {
+      el.innerHTML = '<div class="empty-state">Nenhum contato cadastrado ainda.</div>';
+      return;
+    }
+
+    const relLabel = (v) => (RELATIONS.find((r) => r[0] === v) || [, v])[1];
+
+    el.innerHTML = sorted.map((c) => `
+      <div class="contact-item">
+        <div>
+          <div class="contact-name-row">
+            <span class="contact-name">${c.name}</span>
+            ${c.primary ? '<span class="badge-primary">PRIMÁRIO</span>' : ''}
+          </div>
+          <div class="contact-meta">+${fullPhone(c)}</div>
+          <div class="contact-relation">${relLabel(c.relation)}</div>
+        </div>
+        <div class="contact-actions">
+          <button class="link-btn" onclick="window.__editContact('${c.id}')">Editar</button>
+          <button class="link-btn del" onclick="window.__deleteContact('${c.id}')">Excluir</button>
+        </div>
+      </div>
+    `).join('');
+  }
+  window.__editContact = editContact;
+  window.__deleteContact = deleteContact;
+
+  // ------------------------------------------------------------------
+  // Configurações (gateway + bridge Alexa)
+  // ------------------------------------------------------------------
+  const gatewayChipsEl = document.getElementById('gatewayChips');
+  GATEWAYS.forEach((g) => {
+    const chip = document.createElement('div');
+    chip.className = 'chip' + (g === selectedGateway ? ' selected' : '');
+    chip.textContent = g;
+    chip.addEventListener('click', () => {
+      selectedGateway = g;
+      document.querySelectorAll('#gatewayChips .chip').forEach((c) => c.classList.remove('selected'));
+      chip.classList.add('selected');
+    });
+    gatewayChipsEl.appendChild(chip);
+  });
+
+  document.getElementById('saveGateway').addEventListener('click', () => {
+    logEvent('success', 'Gateway configurado', `Provedor ativo: <b>${selectedGateway}</b>`);
+  });
+
+  document.getElementById('connectAlexa').addEventListener('click', () => {
+    const url = document.getElementById('alexaUrl').value.trim();
+    if (!url) { alert('Informe a URL do bridge WebSocket.'); return; }
+    alexaConnected = true;
+    const pill = document.getElementById('alexaStatus');
+    pill.className = 'status-pill connected';
+    pill.innerHTML = '<span class="dot"></span>conectado';
+    logEvent('success', 'Bridge Alexa conectado', `Escutando eventos em <code>${url}</code>`);
+  });
+
+  // ------------------------------------------------------------------
+  // Inicialização
+  // ------------------------------------------------------------------
+  renderHud();
+  renderContacts();
+  renderLogs();
+})();
+</script>
+</body>
+</html>
